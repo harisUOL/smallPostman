@@ -1,22 +1,164 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
-    <meta
-      http-equiv="X-Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
-    <title>Hello from Electron renderer!</title>
-  </head>
-  <body>
-    <h1>Hello from Electron renderer!</h1>
-    <p>👋</p>
-    <p id="info"></p>
-  </body>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self' data:;"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Small Postman</title>
+  <style>
+    :root{
+      --bg:#1f2125;
+      --panel:#20242b;
+      --panel-2:#2a2f38;
+      --border:#3a3f4b;
+      --text:#e8e8e8;
+      --muted:#aeb6c3;
+      --accent:#ff6c37;   /* Postman-ish orange */
+      --accent-2:#ff905f;
+      --success:#2ecc71;
+      --warning:#f1c40f;
+      --error:#e74c3c;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font:14px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial;
+    }
+    .app{
+      display:grid; grid-template-columns:260px 1fr; height:100vh;
+    }
+    .sidebar{
+      background:var(--panel);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column; gap:16px; padding:16px;
+    }
+    .logo{
+      display:flex; align-items:center; gap:10px; padding:8px 6px;
+      font-weight:700; letter-spacing:.3px;
+    }
+    .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+    .side-section{font-size:12px;text-transform:uppercase;color:var(--muted);margin:8px 0 6px}
+    .list{display:flex;flex-direction:column;gap:6px}
+    .item{
+      padding:8px 10px; border-radius:8px; background:transparent; color:var(--text);
+      border:1px solid transparent; cursor:pointer;
+    }
+    .item:hover{background:var(--panel-2); border-color:var(--border)}
+    .main{
+      display:grid; grid-template-rows:auto auto 1fr;
+    }
+    .tabs{
+      display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--panel);
+    }
+    .tab{
+      padding:8px 12px; border-radius:10px; background:var(--panel-2);
+      border:1px solid var(--border); color:var(--text); cursor:pointer;
+    }
+    .tab.active{outline:2px solid var(--accent)}
+    .request-bar{
+      display:grid; grid-template-columns:140px 1fr 120px;
+      gap:8px; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--panel);
+    }
+    select, input, button{
+      background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+      border-radius:10px; padding:10px 12px; outline:none;
+    }
+    input::placeholder{color:var(--muted)}
+    .send{
+      background:linear-gradient(180deg,var(--accent),var(--accent-2)); border:none; font-weight:700; cursor:pointer;
+    }
+    .send:hover{filter:brightness(1.05)}
+    .content{ display:grid; grid-template-columns:1fr; height:100%; }
+    .response{
+      display:grid; grid-template-rows:auto 1fr; height:100%;
+    }
+    .response-header{
+      display:flex; gap:16px; align-items:center; padding:10px 14px; background:var(--panel); border-bottom:1px solid var(--border);
+    }
+    .chip{padding:4px 10px; border-radius:999px; background:var(--panel-2); border:1px solid var(--border); color:var(--muted);}
+    .chip.ok{color:#b8f7d0; border-color:#2b7a46}
+    .chip.bad{color:#ffb3a8; border-color:#7c2d2d}
+    .resp-tabs{display:flex; gap:8px; margin-left:auto}
+    .resp-tab{padding:6px 10px; border-radius:8px; background:var(--panel-2); border:1px solid var(--border); cursor:pointer}
+    .resp-tab.active{outline:2px solid var(--accent)}
+    .resp-body{padding:12px 14px; overflow:auto}
+    pre{
+      margin:0; background:var(--panel-2); border:1px solid var(--border); padding:12px; border-radius:var(--radius);
+      white-space:pre-wrap; word-break:break-word; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .footer-note{color:var(--muted); font-size:12px; padding:8px 14px; border-top:1px solid var(--border); background:var(--panel)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="logo"><span class="dot"></span> Small Postman</div>
+      <div>
+        <div class="side-section">Collections</div>
+        <div class="list">
+          <div class="item">Getting Started</div>
+          <div class="item">Sample API</div>
+        </div>
+      </div>
+      <div>
+        <div class="side-section">History</div>
+        <div class="list">
+          <div class="item">GET https://api.example.com/users</div>
+          <div class="item">POST https://api.example.com/login</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active">Untitled Request 1</div>
+      </div>
+
+      <!-- Request bar -->
+      <div class="request-bar">
+        <select id="method">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>PATCH</option>
+          <option>DELETE</option>
+          <option>HEAD</option>
+          <option>OPTIONS</option>
+        </select>
+        <input id="url" placeholder="https://api.example.com/resource" />
+        <button class="send" id="sendBtn">Send</button>
+      </div>
+
+      <!-- Response -->
+      <section class="content">
+        <div class="response">
+          <div class="response-header">
+            <div class="chip" id="statusChip">Status: —</div>
+            <div class="chip" id="timeChip">Time: —</div>
+            <div class="chip" id="sizeChip">Size: —</div>
+            <div class="resp-tabs">
+              <div class="resp-tab active" data-tab="body">Body</div>
+              <div class="resp-tab" data-tab="headers">Headers</div>
+              <div class="resp-tab" data-tab="raw">Raw</div>
+            </div>
+          </div>
+          <div class="resp-body">
+            <pre id="output">Send a request to see the response.</pre>
+          </div>
+        </div>
+        <div class="footer-note">UI mock — styling inspired by Postman. Functionality can be wired up next.</div>
+      </section>
+    </main>
+  </div>
+
   <script src="./renderer.js"></script>
+</body>
 </html>
